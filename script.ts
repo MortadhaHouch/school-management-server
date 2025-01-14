@@ -7,6 +7,7 @@ import dotenv from "dotenv"
 import userController from "./controllers/user_controller"
 import connectToDB from "./db/db"
 import courseController from "./controllers/course_controller"
+import time_schedule_controller from "./controllers/time_schedule_controller"
 dotenv.config()
 const app = express()
 const {PORT} = process.env;
@@ -24,4 +25,5 @@ app.use(bodyParser.json({limit:Infinity}));
 app.use(cookieParser())
 app.use("/user",userController)
 app.use("/course",courseController);
+app.use("/schedule",time_schedule_controller);
 app.listen(PORT||5000,()=>console.log("server listening on port " + PORT))

@@ -4,8 +4,17 @@ import User from "../models/User";
 import File from "../models/File";
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import verifyUser from '../middlewares/verifyAdmin';
 dotenv.config()
 const userController = express.Router();
+const verifyAdminOrTeacher = async (req: Request, res: Response): Promise<boolean> => {
+    const user = await verifyUser(req, res);
+    if (user && (user.role === 'ADMIN' || user.role === 'TEACHER')) {
+        return true;
+    }
+    res.status(403).json({ message: "Forbidden" });
+    return false;
+};
 userController.post("/login",async (req,res)=>{
     // validate the request body
     try {
@@ -87,4 +96,17 @@ userController.post("/logout",async(req:Request,res:Response)=>{
         console.log(error);
     }
 })
+userController.get('/users', async (req: Request, res: Response) => {
+    if (!(await verifyAdminOrTeacher(req, res))){
+        res.status(401).json({message:"Not Authorized"})
+    }else{
+        try {
+            const users = await User.find({});
+            res.status(200).json({users});
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+});
 export default userController
