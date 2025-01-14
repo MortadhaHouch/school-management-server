@@ -82,7 +82,26 @@ courseController.get("/by-id/:id",async (req:Request,res:Response)=>{
         console.log(error);
     }
 })
+courseController.get("/count", async (req: Request, res: Response) => {
+    try {
+        const count = await Course.countDocuments();
+        res.json({ count });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 
+// Get completed courses count
+courseController.get("/completed/count", async (req: Request, res: Response) => {
+    try {
+        const count = await Course.countDocuments({ completed: true });
+        res.json({ count });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 courseController.post("/create",async (req:Request,res:Response)=>{
     try {
         const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];

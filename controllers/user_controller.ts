@@ -4,17 +4,8 @@ import User from "../models/User";
 import File from "../models/File";
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import verifyUser from '../middlewares/verifyAdmin';
 dotenv.config()
 const userController = express.Router();
-const verifyAdminOrTeacher = async (req: Request, res: Response): Promise<boolean> => {
-    const user = await verifyUser(req, res);
-    if (user && (user.role === 'ADMIN' || user.role === 'TEACHER')) {
-        return true;
-    }
-    res.status(403).json({ message: "Forbidden" });
-    return false;
-};
 userController.post("/login",async (req,res)=>{
     // validate the request body
     try {
@@ -91,22 +82,35 @@ userController.post("/logout",async(req:Request,res:Response)=>{
                     res.json({message:"User logged out successfully"})
                 }
             }
+        }{
+            res.json({error:"error"})
         }
     } catch (error) {
         console.log(error);
     }
 })
 userController.get('/users', async (req: Request, res: Response) => {
-    if (!(await verifyAdminOrTeacher(req, res))){
-        res.status(401).json({message:"Not Authorized"})
-    }else{
-        try {
-            const users = await User.find({});
-            res.status(200).json({users});
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Server Error" });
+    try {
+        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        if(authToken){
+            const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string};
+            const user = await User.findOne({email})
+            if(user){
+                if(user.role === "ADMIN" || user.role === "TEACHER"){
+                    const users = await User.find({});
+                    res.status(200).json({users});
+                }else{
+                    res.status(401).json({message:'error not authorized'});
+                }
+            }else{
+                res.status(401).json({message:'not authenticated'});
+            }
+        }else{
+            res.status(401).json({message:'not authenticated'});
         }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 export default userController
