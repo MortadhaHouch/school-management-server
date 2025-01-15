@@ -3,113 +3,125 @@ import { Request, Response, Router } from "express";
 import TimeSchedule from "../models/TimeSchedule";
 import User from "../models/User";
 import jwt from "jsonwebtoken"
-export const verifyUser = async (req: Request, res: Response) => {
-    const authHeader = req.headers.authorization;
-    const authToken = authHeader && authHeader.split(" ").length === 2 && authHeader.split(" ")[1];
-
-    if (!authToken) {
-        res.status(401).json({ message: "Unauthorized" });
-        return null;
-    }
-
-    try {
-        const { email } = jwt.verify(authToken, process.env.SECRET_KEY || "secret_key") as { email: string };
-        if (email) {
-            const foundUser = await User.findOne({ email });
-            if (foundUser) {
-                return foundUser;
-            }
-        }
-        res.status(403).json({ message: "Forbidden" });
-        return null;
-    } catch (error) {
-        console.error(error);
-        res.status(401).json({ message: "Unauthorized" });
-        return null;
-    }
-};
-
 dotenv.config();
 const time_schedule_controller = Router();
 
-// Function to verify user
-const verifyAdmin = async (req: Request, res: Response): Promise<boolean> => {
-    const user = await verifyUser(req, res);
-    if (user && user.role === 'ADMIN') {
-        return true;
-    }
-    res.status(403).json({ message: "Forbidden" });
-    return false;
-};
-
 // Get all time schedules
 time_schedule_controller.get("/", async (req: Request, res: Response) => {
-    const user = await verifyUser(req, res);
-    if (!user) return;
     try {
-        const time_schedules = await TimeSchedule.find({});
-        res.json({time_schedules});
+        const authHeader = req.cookies["auth-token"]
+        if(authHeader){
+            const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
+            if(email){
+                const user = await User.findOne({email});
+                if(user){
+                    const schedules = await TimeSchedule.find({})
+                    res.status(200).json({schedules})
+                }else{
+                    res.status(401).json({message:"unauthorized"})
+                }
+            }
+        }else{
+            res.status(401).json({message:"unauthorized"})
+        }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Server Error" });
     }
 });
 
 // Create a new time schedule
 time_schedule_controller.post("/", async (req: Request, res: Response) => {
-    if (!(await verifyAdmin(req, res))) {
-        res.status(401).json({ message: "Not authorized" })
-    }else{
-        try {
-            const newTimeSchedule = new TimeSchedule(req.body);
-            await newTimeSchedule.save();
-            res.status(201).json({newTimeSchedule});
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Server Error" });
+    try {
+        const authHeader = req.cookies["auth-token"]
+        if(authHeader){
+            const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
+            if(email){
+                const user = await User.findOne({email});
+                if(user){
+                    const newTimeSchedule = new TimeSchedule(req.body);
+                    await newTimeSchedule.save();
+                    res.status(201).json({newTimeSchedule});
+                }else{
+                    res.status(401).json({message:"unauthorized"})
+                }
+            }
         }
+    } catch (error) {
+        console.error(error);
     }
 
 });
 
 // Update a time schedule
 time_schedule_controller.put("/:id", async (req: Request, res: Response) => {
-    if (!(await verifyAdmin(req, res))){
-        res.status(401).json({ message: "Not authorized" });
-    }else{
-        try {
-            const updatedTimeSchedule = await TimeSchedule.findByIdAndUpdate(req.params.id, req.body, { new: true });
-            if (!updatedTimeSchedule) {
-                res.status(404).json({ message: "Time Schedule not found" });
-            }else{
-                res.json({updatedTimeSchedule});
+    try {
+        const authHeader = req.cookies["auth-token"]
+        if(authHeader){
+            const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
+            if(email){
+                const user = await User.findOne({email});
+                if(user){
+                    const foundObj = await TimeSchedule.findById(req.params.id);
+                    if(foundObj){
+                        foundObj.set({...foundObj,...req.body});
+                        await foundObj.save();
+                        res.json({schedule:foundObj})
+                    }else{
+                        res.status(404).json({error:"not found"});
+                    }
+                }else{
+                    res.status(401).json({message:"unauthorized"})
+                }
             }
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Server Error" });
         }
+    } catch (error) {
+        console.error(error);
     }
 
 });
 
 // Delete a time schedule
 time_schedule_controller.delete("/:id", async (req: Request, res: Response) => {
-    if (!(await verifyAdmin(req, res))) {
-        res.status(401).json({ message: "Not authorized" })
-    }else{
-        try {
-            const deletedTimeSchedule = await TimeSchedule.findByIdAndDelete(req.params.id);
-            if (!deletedTimeSchedule) {
-                res.status(404).json({ message: "Time Schedule not found" });
-            }else{
-                res.json({ message: "Time Schedule deleted successfully" });
+    try {
+        const authHeader = req.cookies["auth-token"]
+        if(authHeader){
+            const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
+            if(email){
+                const user = await User.findOne({email});
+                if(user && user.role === "ADMIN"){
+                    const foundObj = await TimeSchedule.findByIdAndDelete(req.params.id);
+                    if(foundObj){
+                        res.json({message:"schedule deleted"});
+                    }else{
+                        res.status(404).json({error:"not found"});
+                    }
+                }else{
+                    res.status(401).json({message:"unauthorized"})
+                }
             }
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Server Error" });
         }
+    } catch (error) {
+        console.error(error);
     }
 
 });
-
+time_schedule_controller.get("/count", async (req: Request, res: Response) => {
+    try {
+        const authHeader = req.cookies["auth-token"]
+        if(authHeader){
+            const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
+            if(email){
+                const user = await User.findOne({email});
+                if(user){
+                    const count = await TimeSchedule.countDocuments({});
+                    res.json({count});
+                }else{
+                    res.status(401).json({message:"unauthorized"})
+                }
+            }
+        }
+    } catch (error) {
+        console.error(error);
+    }
+});
 export default time_schedule_controller;

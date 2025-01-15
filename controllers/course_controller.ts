@@ -60,7 +60,7 @@ courseController.get("/:p?",async(req:Request,res:Response)=>{
 })
 courseController.get("/by-id/:id",async (req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string,firstName:string,lastName:string};
             if(email){
@@ -104,7 +104,7 @@ courseController.get("/completed/count", async (req: Request, res: Response) => 
 });
 courseController.post("/create",async (req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string,firstName:string,lastName:string};
             if(email){
@@ -127,7 +127,7 @@ courseController.post("/create",async (req:Request,res:Response)=>{
 })
 courseController.put("/add-ref",async(req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string,firstName:string,lastName:string};
             const foundUser = await User.findOne({email});
@@ -149,7 +149,7 @@ courseController.put("/add-ref",async(req:Request,res:Response)=>{
 })
 courseController.put("/edit",async (req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string,firstName:string,lastName:string};
             if(email){
@@ -175,7 +175,7 @@ courseController.put("/edit",async (req:Request,res:Response)=>{
 })
 courseController.delete("/:id",async(req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string,firstName:string,lastName:string};
             if(email){
@@ -200,4 +200,21 @@ courseController.delete("/:id",async(req:Request,res:Response)=>{
         console.log(error);
     }
 })
+courseController.get('/enrolled', async (req: Request, res: Response) => {
+    try {
+        const authToken = req.cookies["auth-token"];
+        const decodedToken = jwt.verify(authToken, process.env.SECRET_KEY || "secret_key") as { email: string };
+        const user = await User.findOne({ email: decodedToken.email });
+        if (!user) {
+            res.status(404).json({ message: "User not found" });
+        }else{
+            const enrolledCourses = await Course.find({ _id: { $in: user.courses } });
+            res.json({enrolled:enrolledCourses});
+        }
+
+    } catch (error) {
+        console.error('Error fetching enrolled courses:', error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 export default  courseController

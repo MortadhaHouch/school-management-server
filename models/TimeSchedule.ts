@@ -24,15 +24,13 @@ const schoolScheduleSchema = new Schema({
   },
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
     required: true,
   },
-  students: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  }],
+  students: {
+    type:[mongoose.Schema.Types.ObjectId]
+  },
   classroom: {
-    type: String,
+    required: mongoose.Schema.Types.ObjectId,
   },
   startTime: {
     type: Date,

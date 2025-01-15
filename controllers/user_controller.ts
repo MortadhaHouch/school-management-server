@@ -4,6 +4,7 @@ import User from "../models/User";
 import File from "../models/File";
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import { admins, teachers } from '../allowable-users/constants';
 dotenv.config()
 const userController = express.Router();
 userController.post("/login",async (req,res)=>{
@@ -39,6 +40,24 @@ userController.post("/login",async (req,res)=>{
         console.log(error);
     }
 })
+userController.get("/role", async (req: Request, res: Response) => {
+    try {
+        if(req.cookies["auth-token"]){
+            const {email} = jwt.verify(req.cookies["auth-token"], process.env.SECRET_KEY || "secret_key") as { email: string };
+            const user = await User.findOne({ email });
+            if(user){
+                res.status(200).json({role:user.role})
+            }else{
+                res.json({message:"User not found"})
+            }
+        }else{
+            res.status(404).json({ message: "User not found" });
+        }
+    } catch (error) {
+        console.error('Error fetching user role:', error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 userController.post("/register",async(req:Request,res:Response)=>{
     try {
         const {email, password, firstName, lastName,path} = req.body
@@ -46,7 +65,13 @@ userController.post("/register",async(req:Request,res:Response)=>{
         const foundUser = await User.findOne({email});
         if(!foundUser){
             const avatar = await File.create({path});
-            const user = new User({email,password,firstName,lastName,avatar:avatar._id})
+            let role = 'STUDENT';
+            if (admins.some(admin => admin.email === email)) {
+                role = 'ADMIN';
+            } else if (teachers.some(teacher => teacher.email === email)) {
+                role = 'TEACHER';
+            }
+            const user = new User({email,password,firstName,lastName,role,avatar:avatar._id})
             const token = jwt.sign({
                 id:user._id,
                 email:user.email,
@@ -70,7 +95,7 @@ userController.post("/register",async(req:Request,res:Response)=>{
 })
 userController.post("/logout",async(req:Request,res:Response)=>{
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const credentials = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key");
             if(typeof credentials === "object"){
@@ -91,7 +116,7 @@ userController.post("/logout",async(req:Request,res:Response)=>{
 })
 userController.get('/users', async (req: Request, res: Response) => {
     try {
-        const authToken = req.headers.authorization && req.headers.authorization.split(" ").length ===2 && req.headers.authorization.split(" ")[1];
+        const authToken = req.cookies["auth-token"];
         if(authToken){
             const {email} = jwt.verify(authToken,process.env.SECRET_KEY||"secret_key") as {email:string};
             const user = await User.findOne({email})
