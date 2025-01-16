@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import Room from '../models/Room';
 import User from '../models/User';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 
 dotenv.config();
 const roomController = express.Router();
@@ -13,8 +14,18 @@ roomController.get('/', async (req: Request, res: Response) => {
             const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
             const user = await User.findOne({email});
             if(user){
-                const rooms = await Room.find();
-                res.json({rooms});
+                let rooms = await Room.find()
+                let data = []
+                for await (const element of rooms) {
+                    data.push({
+                        name:element.name,
+                        capacity:element.capacity,
+                        status:element.status,
+                        course:element.course,
+                        id:element._id
+                    })
+                }
+                res.json({rooms:data});
             }else{
                 res.json({message:"unauthorized"});
             }
@@ -29,14 +40,16 @@ roomController.get('/', async (req: Request, res: Response) => {
 roomController.post('/', async (req: Request, res: Response) => {
     try {
         const authHeader = req.cookies["auth-token"]
+        console.log(authHeader);
         if(authHeader){
             const {email} = jwt.verify(authHeader, process.env.SECRET_KEY||"secret_key") as {email:string};
             if(email){
+                const {name,capacity,status} = req.body;
                 const user = await User.findOne({email})
-                if(user){
-                    const newRoom = new Room(req.body);
+                if(user && user.role === "ADMIN"){
+                    const newRoom = new Room({name,capacity,status});
                     await newRoom.save();
-                    res.status(201).json(newRoom);
+                    res.status(201).json({room:newRoom});
                 }else{
                     res.status(401).json({ message:"Unauthorized"});
                 }
@@ -61,11 +74,12 @@ roomController.put('/:id', async (req: Request, res: Response) => {
             if(email){
                 const user = await User.findOne({email})
                 if(user && user.role === "ADMIN"){
-                    const updatedRoom = await Room.findByIdAndUpdate(req.params.id, req.body, {new: true});
+                    const {name,capacity,status} = req.body
+                    const updatedRoom = await Room.findByIdAndUpdate(new mongoose.Types.ObjectId(req.params.id), {name,capacity,status,});
                     if (!updatedRoom) {
                         res.status(404).json({ message: "Room not found" });
                     }else{
-                        res.json(updatedRoom);
+                        res.json({...updatedRoom,id:req.params.id});
                     }
                 }else{
                     res.status(401).json({ message:"Unauthorized"});

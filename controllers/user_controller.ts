@@ -78,7 +78,8 @@ userController.post("/register",async(req:Request,res:Response)=>{
                 firstName:user.firstName,
                 lastName:user.lastName,
                 isVerified:true,
-                avatar:avatar.path
+                avatar:avatar.path,
+                isLoggedIn:true
             },process.env.SECRET_KEY||"secret_key",{
                 expiresIn:60*60*24*7
             })
@@ -93,7 +94,7 @@ userController.post("/register",async(req:Request,res:Response)=>{
         res.status(500).json({server_error:"An error occurred while registering the user"})
     }
 })
-userController.post("/logout",async(req:Request,res:Response)=>{
+userController.put("/logout",async(req:Request,res:Response)=>{
     try {
         const authToken = req.cookies["auth-token"];
         if(authToken){

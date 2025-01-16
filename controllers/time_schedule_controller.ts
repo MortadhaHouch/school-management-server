@@ -38,9 +38,13 @@ time_schedule_controller.post("/", async (req: Request, res: Response) => {
             if(email){
                 const user = await User.findOne({email});
                 if(user){
-                    const newTimeSchedule = new TimeSchedule(req.body);
-                    await newTimeSchedule.save();
-                    res.status(201).json({newTimeSchedule});
+                    if(user.role === "ADMIN"){
+                        const newTimeSchedule = new TimeSchedule(req.body);
+                        await newTimeSchedule.save();
+                        res.status(201).json({newTimeSchedule});
+                    }else{
+                        res.status(201).json({message:"not authorized"});
+                    }
                 }else{
                     res.status(401).json({message:"unauthorized"})
                 }

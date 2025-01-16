@@ -11,7 +11,7 @@ const RoomSchema: Schema = new Schema({
     name: { type: String, required: true },
     capacity: { type: Number, required: true },
     status: { type: Boolean, required: true },
-    course: { type: Schema.Types.ObjectId, required: true }
+    course: { type: Schema.Types.ObjectId, required: false }
 });
 
 const Room = model<IRoom>('Room', RoomSchema);

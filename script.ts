@@ -18,7 +18,7 @@ connectToDB();
 
 app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE"],
-    origin: "http://localhost:4200",
+    origin: "http://localhost:4200",//allow requests from origin http://localhost:4200
     credentials: true // Allow credentials to be sent
 }));
 
